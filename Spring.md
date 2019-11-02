@@ -249,7 +249,7 @@
 
 官方解释：
 
-![image-20191025001927715](https://github.com/fakefake00/repo1/blob/master/Spring.assets/image-20191025001927715.png)
+![image-20191025001927715](https://github.com/fakefake00/repo1/raw/master/Spring.assets/image-20191025001927715.png)
 
 使用：
 
@@ -754,6 +754,6 @@ public class MyTest {
 
 方式二：自定义来实现AOP【主要是切面定义】
 
-![guidao](https://github.com/fakefake00/repo1/blob/master/guidao.jpeg)
+![guidao](https://github.com/fakefake00/repo1/raw/master/guidao.jpeg)
 
 ![guidao](guidao.jpeg)
