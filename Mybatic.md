@@ -132,7 +132,14 @@ INSERT INTO USER(id,NAME,pwd) VALUES(NULL,'张三','123456'),(NULL,'李四','123
               </dataSource>
           </environment>
       </environments>
-  
+      
+      <!--每一个Mapper.xml都需要在Mybatis核心配置文件中注册-->
+      <mappers>
+          <mapper resource="com/hui/dao/UserMapper.xml"/>
+          <!-- 配置文件很多时写成通配符去匹配 -->
+          <mapper resource="com/hui/dao/*Mapper.xml"/>
+      </mappers>
+      
   </configuration>
   ```
 
@@ -171,7 +178,7 @@ INSERT INTO USER(id,NAME,pwd) VALUES(NULL,'张三','123456'),(NULL,'李四','123
 
   ```java
   //实体类
-  public class User implements Serializable {
+  public class User {
       private int id;
       private String name;
       private String pwd;
@@ -231,62 +238,60 @@ INSERT INTO USER(id,NAME,pwd) VALUES(NULL,'张三','123456'),(NULL,'李四','123
   <mapper namespace="com.hui.dao.UserDao">
       <!--select查询语句-->
       <select id="getUserList" resultType="com.hui.pojo.User">
-          select * from mybatis.user
+          select * from user
       </select>
   </mapper>
   ```
 
 ### 2.4、测试
 
-注意点：
+**遇到的问题**：
 
-org.apache.ibatis.binding.BindingException: Type interface com.hui.dao.UserDao is not known to the MapperRegistry.
+1. org.apache.ibatis.binding.BindingException: Type interface com.hui.dao.UserDao is not known to the MapperRegistry.
 
-**MapperRegistry是什么？**核心配置文件中注册mappers
+   **MapperRegistry是什么？**解决：核心配置文件中注册mappers
 
+2. 
 
+   ![image-20191107152818079](images/image-20191107152818079.png)
 
-![image-20191107152818079](images/image-20191107152818079.png)
+   **maven由于他的约定大于配置，之后可能遇到写的配置文件，无法被导出或者生效的问题**，解决方案：
 
-**maven由于他的约定大于配置，之后可能遇到写的配置文件，无法被导出或者生效的问题**，解决方案：
+   ```xml
+   <!--在build中配置resources，来防止我们资源导出失败的问题-->
+   <build>
+       <resources>
+           <resource>
+               <directory>src/main/resources</directory>
+               <includes>
+                   <include>**/*.properties</include>
+                   <include>**/*.xml</include>
+               </includes>
+               <filtering>true</filtering>
+           </resource>
+           <resource>
+               <directory>src/main/java</directory>
+               <includes>
+                   <include>**/*.properties</include>
+                   <include>**/*.xml</include>
+               </includes>
+               <filtering>true</filtering>
+           </resource>
+       </resources>
+   </build>
+   ```
 
-```xml
-<!--在build中配置resources，来防止我们资源导出失败的问题-->
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>**/*.properties</include>
-                    <include>**/*.xml</include>
-                </includes>
-                <filtering>true</filtering>
-            </resource>
-            <resource>
-                <directory>src/main/java</directory>
-                <includes>
-                    <include>**/*.properties</include>
-                    <include>**/*.xml</include>
-                </includes>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
-    </build>
-```
+3. Cause: com.sun.org.apache.xerces.internal.impl.io.MalformedByteSequenceException: 3 字节的 UTF-8 序列的字节 3 无效。
 
+   解决：解析xml时，有中文，此时把xml文件的头
 
+   <?xml version="1.0" encoding="UTF-8"?>
 
-Cause: com.sun.org.apache.xerces.internal.impl.io.MalformedByteSequenceException: 3 字节的 UTF-8 序列的字节 3 无效。
+   改成：
 
-解决：解析xml时，有中文，此时把xml文件的头
+   <?xml version="1.0" encoding="GBK"?>
 
-<?xml version="1.0" encoding="UTF-8"?>
-
-改成：
-
-<?xml version="1.0" encoding="GBK"?>
-
-即可！
+   即可！
 
 
 
@@ -331,7 +336,7 @@ namespace中的包名要和Dao/Mapper接口的包名一致
 
 选择查询语句：
 
-- id：就是对应的namespace的方法名
+- id：就是对应namespace绑定的接口下的方法名
 - resultType：sql语句执行的返回值
 - parademeterType：参数类型
 
@@ -470,7 +475,7 @@ password=@dmin123
 
 - 可以直接引入外部文件
 - 可以在其中增加一些属性配置
-- 如果两个文件由同一个字段，优先使用外部配置文件的
+- 如果两个文件有同一个字段，优先使用外部配置文件的
 
 
 
@@ -483,22 +488,23 @@ password=@dmin123
   <typeAliases>
       <typeAlias type="com.hui.pojo.User" alias="User"/>
   </typeAliases>
-  <typeAliases>
   ```
+  
+- 也可以指定一个包名，Mybatis会在包名下面搜索需要的java Bean，
 
-- 也可以指定一个包名，Mybatis会在包名下面搜索需要的java Bean，如：扫描实体类的包，它的默认别名 就为这个类的类名，首字母小写
-
+  如：扫描实体类的包，它的默认别名 就为这个类的类名，首字母小写（大写也可以，建议小写）
+  
   ```xml
   <typeAliases>
-      <typeAlias type="com.hui.pojo.User"/>
+      <package name="com.hui.pojo"/>
   </typeAliases>
   ```
 
 在实体类较少时使用第一种；
 
-如果实体类十分多，建议使用第二种；
+如果实体类很多，建议使用第二种；
 
-第一种可以自定义别名；第二种不行，要改，则需要在实体上增加注解。
+第一种可以自定义别名；第二种不行，要改，则需要在实体上增加注解来自定义别名。
 
 ```java
 @Alias("hello")
@@ -541,8 +547,8 @@ MapperRegistry：注册绑定Mapper文件
 
 方式二：使用class文件绑定注册	/	使用扫描包进行注入绑定
 
-- 接口和它的Mapper配置文件必须同名
-- 接口和它的Mapper配置文件必须在同一个包下
+- 接口和它的Mapper配置文件**必须同名**
+- 接口和它的Mapper配置文件**必须在同一个包下**
 
 ```xml
 <mappers>
@@ -552,7 +558,7 @@ MapperRegistry：注册绑定Mapper文件
 
 ```xml
 <mappers>
-    <mapper class="com.hui.dao"/>
+    <package name="com.hui.dao"/>
 </mappers>
 ```
 
@@ -573,7 +579,7 @@ MapperRegistry：注册绑定Mapper文件
 ```xml
 <!--select查询语句-->
 <select id="getUserList" resultMap="UserMap">
-	select id,name,pwd as password from mybatis.user
+	select id,name,pwd as password from user
 </select>
 ```
 
@@ -600,18 +606,35 @@ MapperRegistry：注册绑定Mapper文件
 
 掌握：
 
-- LOG4J
 - STDOUT_LOGGING
+- LOG4J
 
 
 
-**STDOUT_LOGGING标准日志输出**
+**STDOUT_LOGGING标准日志输出**(在核心配件文件配置完直接就可以使用)
 
 在mybatis核心配置文件中，配置日志：
+
+```xml
+<settings>
+    <setting name="logImpl" value="STDOUT_LOGGING"/>
+</settings>
+```
+
+
 
 ![image-20191111220654412](images/image-20191111220654412.png)
 
 ### 6.2、Log4j
+
+慨念：
+
+-  Log4j是[Apache](https://baike.baidu.com/item/Apache/8512995)的一个开源项目，通过使用Log4j，我们可以控制日志信息输送的目的地是[控制台](https://baike.baidu.com/item/控制台/2438626)、文件、[GUI](https://baike.baidu.com/item/GUI)组件；
+- 也可以控制每一条日志的输出格式；
+- 通过定义每一条日志信息的级别，我们能够更加细致地控制日志的生成过；
+- 可以通过一个[配置文件](https://baike.baidu.com/item/配置文件/286550)来灵活地进行配置，而不需要修改应用的代码 
+
+
 
 使用步骤：
 
@@ -626,10 +649,10 @@ MapperRegistry：注册绑定Mapper文件
    </dependency>
    ```
 
-2. log4j.properties
+2. log4j.properties（编写输出的日志格式等，网上去搜）
 
    ```
-   #将等级为DEBUG的日志信息输出到console和file这两个目的地，console和file的定义在下面的代码
+   #将等级为DEBUG的日志信息输出到console和file这两个目的地，console和file的定义在下面的代码，名字要对应
    log4j.rootLogger=DEBUG, console, file
    #控制台输出的相关设置
    log4j.appender.console=org.apache.log4j.ConsoleAppender
@@ -676,7 +699,7 @@ MapperRegistry：注册绑定Mapper文件
    static Logger logger = Logger.getLogger(UserMapperTest.class);
    ```
 
-3. 日志级别
+3. 日志级别（常用）：
 
    ```java
    logger.info("info：进入testLog4j");
@@ -690,5 +713,148 @@ MapperRegistry：注册绑定Mapper文件
 
 **为什么要分页？**
 
+- 减少数据的处理量
 
 
+
+### 7.1、使用limit分页
+
+```
+语法：seletc * from user limit startIndex,pageSize
+
+当前页		（当前页-1）*页面大小	页面大小
+```
+
+
+
+使用Mybatis实现分页，核心sql实现
+
+1. 接口
+
+   ```java
+   List<User> getUserByLimit(Map<String,Integer> map);
+   ```
+
+2. Mapper.xml
+
+   ```xml
+   <select id="getUserByLimit" parameterType="map" resultType="user">
+       select * from mybatis.user limit #{startIndex},#{pageSize}
+   </select>
+   ```
+
+3. 测试
+
+   ```java
+   @Test
+   public void testLimit(){
+       SqlSession sqlSession = MybatisUtils.getSqlSession();
+       UserMapper mapper = sqlSession.getMapper(UserMapper.class);
+       HashMap<String, Integer> map = new HashMap<String, Integer>();
+       map.put("startIndex",0);
+       map.put("pageSize",3);
+   
+       List<User> userByLimit = mapper.getUserByLimit(map);
+       for (User user : userByLimit) {
+           System.out.println(user);
+       }
+   }
+   ```
+
+   
+
+### 7.2、RowBounds分页
+
+不使用sql实现分页，在java层实现
+
+### 7.3、分页插件
+
+https://pagehelper.github.io
+
+
+
+# 8、使用注解开发
+
+![image-20191117230720161](images/image-20191117230720161.png)
+
+1. 注解直接在接口上实现
+
+   ```java
+   @Select("select * from user")
+   List<User> getUsers();
+   ```
+
+2. 需要在核心配置文件中绑定接口
+
+   ```xml
+   <!--每一个Mapper.xml都需要在Mybatis核心配置文件中注册-->
+   <mappers>
+       <mapper resource="com/hui/dao/UserMapper.xml"/>
+   </mappers>
+   ```
+
+3. 测试
+
+   
+
+   本质：反射机制实现
+
+
+
+#### 1、Mybatis执行流程剖析
+
+![image-20191117233526624](images/image-20191117233526624.png)
+
+
+
+#### 2、关于@Param()注解
+
+- 基本类型的参数或者String类型，需要加上
+- **引用类型不需要加**
+- 如果只要一个基本类型的话，可以忽略，但是**建议都加上**
+- 在sql中引用的就是这里的 @Param() 中设定的属性名
+
+接口：
+
+```java
+@Select("select * from user where id = #{idd}")
+User getUserByIds(@Param("idd") int id);//基本类型参数，就加上@Param("idd"),它就必然从这边获取
+```
+
+
+
+#### 3、#{}		${}	区别
+
+
+
+# 9、Lombok插件使用
+
+步骤：
+
+​	
+
+1. 在idea中安装Lombok插件
+
+2. 导入lombok的jar包
+
+   ```xml
+   <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+   <dependency>
+       <groupId>org.projectlombok</groupId>
+       <artifactId>lombok</artifactId>
+       <version>1.18.10</version>
+       <scope>provided</scope>
+   </dependency>
+   ```
+
+   
+
+3. 在实体类上加注解即可
+
+   ```
+   @Data
+   @AllArgsConstructor
+   @NoArgsConstructor
+   ```
+
+   
