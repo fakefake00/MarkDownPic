@@ -568,3 +568,282 @@ TRUNCATE TABLE `student`;
 - InnoDB 自增列从1开始（存在内存当中的，断电即失）
 - MyISM 继续从上一个自增量开始（存在文件中的，不会丢失）
 
+
+
+
+
+# 6、DQL查询数据（最重点）
+
+## 6.1DQL（data query language）
+
+- 所有的查询操作都用它 select
+- 简单、复杂的查询它都能做
+- 数据库中最核心的语言，最重要的语句
+
+
+
+## 6.2、指定查询字段
+
+```sql
+-- 查询所有的学生
+-- select 字段 from 表
+SELECT * FROM `student`;
+
+-- 查询指定字段
+SELECT `StudentNo`,`StudentName` FROM student;
+-- 别名，给结果起一个名字  as  可以给字段起别名，也可以给表起别名
+SELECT `StudentNo` AS 学号,`StudentName` AS 学生姓名 FROM `student`;
+
+-- 函数 concat(a,b)
+SELECT CONCAT('姓名:',`StudentName`) AS 新名字 FROM `student`;
+```
+
+>有时候，列名字不是那么见名知意，可以起别名    as   
+>
+>- 字段名 as 别名
+>- 表名 as 别名
+
+
+
+>去重 distinct
+
+作用：去除select查询出来的结果中重复的数据，重复的数据只显示一条
+
+```sql
+-- 查询一下有哪些同学参加了考试，成绩
+SELECT * FROM `result`;
+-- 查询有哪些同学参加了考试
+SELECT `StudentNo` FROM `result`;
+-- 发现重复数据，去重
+SELECT DISTINCT `StudentNo` FROM `result`;
+```
+
+
+
+>数据库的列（表达式）
+
+```sql 
+SELECT VERSION();-- 查询系统版本（函数）
+SELECT 100*3-1 AS 计算结果;-- 用来计算（表达式）
+SELECT @@auto_increment_increment;-- 查询自增的步长（变量）
+
+-- 学生考试成绩 +1分查看
+SELECT `StudentNo`,`StudentResult`+1 AS "加分后" FROM `result`;
+```
+
+==数据库中的表达式：文本值，列，null，函数，计算表达式，系统变量。。。==
+
+select `表达式` from 表；
+
+
+
+## 6.3、where条件子句
+
+作用：检索数据中`符合条件`的值
+
+```sql
+SELECT studentno,`StudentResult` FROM `result`;
+
+-- 模糊查询（区间）
+-- 查询考试成绩在 95-100分之间
+SELECT `StudentNo`,`StudentResult` FROM `result` 
+WHERE `StudentResult` BETWEEN 95 AND 100;
+
+-- 除了1000号学生以外的同学成绩
+SELECT `StudentNo`,`StudentResult` FROM `result`
+-- where `StudentNo` !=1000;
+-- WHERE `StudentNo` <>1000;
+WHERE NOT `StudentNo` =1000;
+```
+
+尽量使用英文字母
+
+
+
+>模糊查询：本质就是比较运算符
+
+| 运算符      | 语法              | 描述                                 |
+| ----------- | ----------------- | ------------------------------------ |
+| is null     | A is null         | 如果操作符为null，结果为真           |
+| is not null | A is not null     | 如果操作符不为null，结果为真         |
+| between     | A between B and C | 若A在B和C之间，则结果为真            |
+| **like**    | A like B          | sql匹配，如果A匹配B，则结果为真      |
+| in          | A in(a1,a2,a3...) | 假设A在a1，或者a2...其中，则结果为真 |
+
+```sql
+-- 查询姓刘的同学
+-- like结合  %（代表0到任意个字符）  _（代表匹配一个字符）
+SELECT `StudentNo`,`StudentName` FROM `student`
+-- where `StudentName` like '刘_'
+WHERE `StudentName` LIKE '刘%'
+
+-- 查询学生带有风字姓名
+SELECT `StudentNo`,`StudentName` FROM `student`
+WHERE `StudentName`  LIKE '%风%'
+
+-- in （具体的一个或多个值,不能用%_，这两个匹配符只能在like用）
+-- 查询1001，1002，1003号学员
+SELECT `StudentNo`,`StudentName` FROM `student`
+WHERE `StudentNo` IN (1000,1001,1002)
+
+SELECT `StudentNo`,`StudentName` FROM `student`
+WHERE `Address` IN('安徽',"河南洛阳")
+
+
+-- 查询地址为空的学生 null  或者空 ''
+SELECT `StudentNo`,`StudentName`,`Address` FROM `student`
+WHERE `Address` IS NULL OR `Address`=''
+
+-- 查询没有出生日期的同学  为空
+SELECT `StudentNo`, `StudentName` FROM `student`
+WHERE `BornDate` IS  NULL
+
+```
+
+
+
+
+
+## 6.4、联表查询
+
+>join
+
+```sql
+-- 等值连接
+SELECT s.StudentNo,studentName,SubjectNo,StudentResult
+FROM student AS s,result AS r
+WHERE s.studentNo = r.studentNo
+
+
+-- join（连接的表） on （判断的条件） 连接查询
+-- where 等值查询
+SELECT s.`StudentNo`,`StudentName`,`SubjectNo`,`StudentResult`
+FROM `student` s
+INNER JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+
+-- left join （查询了所有同学，不考试的也会查询 出来）
+SELECT s.`StudentNo`,`StudentName`,`SubjectNo`,`StudentResult`
+FROM `student` s
+LEFT JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+WHERE `StudentResult` IS NULL -- 查询缺考的同学
+
+-- right join
+-- left join
+SELECT s.`StudentNo`,`StudentName`,`SubjectNo`,`StudentResult`
+FROM `student` s
+RIGHT JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+```
+
+| 操作       | 描述                                       |
+| ---------- | ------------------------------------------ |
+| inner join | 如果表中至少有一个匹配，就返回行           |
+| left join  | 会从左表返回所有的值，即使右表中没有匹配   |
+| right join | 会从右表中返沪所有的值，即使左表中没有匹配 |
+
+多表查询时解决思路：
+
+1. 分析需求，分析查询的字段来自哪些表
+2. 确定使用哪种连接查询？（7种）
+3. 确定交叉点（这两个表种那个数据是相同的）
+4. 判断的条件：...
+
+
+
+```sql
+-- 查询参加了考试的学生信息：学号，学生姓名，科目名，分数
+SELECT s.`StudentNo`,`StudentName`,`SubjectName`,`StudentResult`
+FROM `student` s
+RIGHT JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+INNER JOIN `subject` sub
+ON r.`SubjectNo`=sub.`SubjectNo`
+```
+
+
+
+
+
+>自连接（了解）
+
+```sql
+-- 查询父子信息：把一张表看作两个一模一样的表
+SELECT a.`categoryName` '父栏目',b.`categoryName` '子栏目'
+FROM `category` a,`category` b
+WHERE a.`categoryid`=b.`pid`
+```
+
+
+
+
+
+## 6.5、分页和排序
+
+>排序
+
+```sql
+-- 按成绩降序排序
+
+SELECT s.`StudentNo`,`StudentName`,`SubjectName`,`StudentResult`
+FROM `student` s  
+INNER JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+INNER JOIN `subject` sub
+ON r.`SubjectNo`=sub.`SubjectNo`
+WHERE `SubjectName`='数据库结构-1'
+ORDER BY `StudentResult` DESC -- 降序
+```
+
+>分页：limit(,)
+
+```sql
+-- 分页，每页只显示五条数据
+SELECT s.`StudentNo`,`StudentName`,`SubjectName`,`StudentResult`
+FROM `student` s  
+INNER JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+INNER JOIN `subject` sub
+ON r.`SubjectNo`=sub.`SubjectNo`
+WHERE `SubjectName`='数据库结构-1'
+ORDER BY `StudentResult` DESC
+LIMIT 0,5 -- 分页
+
+-- 网页应用：当前，总的页数，页面的大小
+-- 第一页  limit 0,5		(1-1)*5
+-- 第二页  limit 5,5		(2-1)*5
+-- 第三页  limit 10,5		(3-1)*5
+-- 第n页   limit ?,5 		 (n-1)*5
+
+-- (n-1)*pageSize,pageSize
+-- pageSize:页面大小
+-- (n-1)*pageSize:起始值
+-- n:当前页
+-- 数据总数/页面大小=总页数
+
+```
+
+
+
+```sql
+-- 查询 JAVA第一学年 课程成绩排名前十的学生，并且分数要大于80的学生信息（学号，姓名，课程名称，分数）
+SELECT s.`StudentNo`,`StudentName`,`SubjectName`,`StudentResult`
+FROM `student` s
+INNER JOIN `result` r
+ON s.`StudentNo`=r.`StudentNo`
+INNER JOIN `subject` sub
+ON r.`SubjectNo`=sub.`SubjectNo`
+WHERE `SubjectName`='JAVA第一学年' AND `StudentResult`>80
+ORDER BY `StudentResult` DESC
+LIMIT 0,10
+```
+
+
+
+## 6.6、子查询
+
+where（这个值是计算出来的）
+
+本质：`在where语句种嵌套一个子查询语句`
+
